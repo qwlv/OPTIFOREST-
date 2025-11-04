@@ -25,7 +25,7 @@ branch = int(args["branch"])
 print("Dataset:",filename)
 
 
-num_ensemblers = 1
+num_ensemblers = 100
 
 glass_df = pd.read_csv('data/' + filename + '.csv', header=None)  # pandas.DataFrame is returned by pandas.read_csv()
 # print("Number of columns:", glass_df.shape[1])  # Add this
