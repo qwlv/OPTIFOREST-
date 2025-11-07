@@ -1,9 +1,35 @@
 # beer_dataset_generator.py
 """
 Beer Quality and Process Anomalies Dataset Generator
-Author: Lavansh Kumar Singh, 2025
-Creates a realistic synthetic dataset simulating brewing process readings
-with correlated numerical features and rare production anomalies.
+Author: Lavansh Kumar Singh (2025)
+Purpose:
+    This script constructs a realistic, domain-inspired synthetic dataset 
+    that simulates the brewing process in beer production. It generates 
+    correlated process features, environmental variables, and production 
+    anomalies that mimic quality control issues in industrial settings.
+
+Rationale for Dataset Design:
+    The brewing process provides a structured and interpretable analogy 
+    for anomaly detection, where most batches follow a stable process 
+    distribution and occasional faulty batches deviate significantly.
+    
+    The dataset intentionally models *real-world complexity*:
+    - Continuous variables with realistic industrial ranges.
+    - Feature correlations between process parameters.
+    - Synthetic noise and nonlinear interactions.
+    - Injected anomalies with physically interpretable deviations.
+
+    This design allows OptIForest and other anomaly detection algorithms 
+    to be evaluated under realistic multi-feature, continuous-variable 
+    conditions rather than purely statistical simulations.
+
+Scalability:
+    The modular architecture allows parameter tuning for:
+      • Different production domains (e.g., wine, dairy, chemical mixing).
+      • Varying anomaly ratios or drift intensity.
+      • Controlled experiments across multiple datasets (e.g., beers_simple, beers_drifted, beers_extreme).
+    Thus, this framework can generate a *family of correlated anomaly datasets* 
+    for model benchmarking.
 """
 
 import numpy as np

@@ -1,3 +1,17 @@
+'''
+Purpose:
+    This script prepares a normalized, anomaly-labeled version of the 
+    Annthyroid dataset for use in OptIForest experiments.
+
+Rationale:
+    - The original ADBench version of Annthyroid includes 21 numerical features.
+    - Since OptIForest expects numeric inputs and a final binary label column, 
+      this script creates a simple but meaningful anomaly labeling scheme 
+      using unsupervised clustering (K-Means).
+    - The smaller of the two clusters is treated as the "anomaly" class,
+      reflecting typical imbalance in anomaly detection datasets.
+'''
+
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans

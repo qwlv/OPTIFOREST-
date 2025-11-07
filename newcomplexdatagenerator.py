@@ -1,88 +1,88 @@
-# Filename: synthetic_optiforest_advanced.py
+'''
+Purpose:
+    This script creates a reproducible, parametrically controlled synthetic dataset
+    designed to test the robustness of anomaly detection models such as OptIForest.
+
+Rationale for Data Generation Method:
+    While scikit-learn’s `make_classification` function is sometimes viewed as a basic
+    synthetic data generator, it was intentionally selected in this project to establish
+    a reproducible and parameterized foundation for constructing the synthetic complex dataset.
+    This choice aligns with the principle of controlled replication, enabling direct comparison
+    with the original OptIForest study under consistent conditions.
+
+    The controlled generation process offered by `make_classification` allows explicit tuning
+    of feature informativity, redundancy, class imbalance, and injected noise—all crucial
+    for evaluating the algorithm’s sensitivity to structured and unstructured variance.
+    Moreover, it supports precise adjustment of complexity parameters
+    (e.g., number of informative features, correlation strength, and class separation),
+    allowing systematic testing of OptIForest’s robustness.
+
+Scalability:
+    The modular design of this code allows researchers to modify parameters such as
+    sample size, number of features, proportion of outliers, or data distribution range
+    to generate multiple variants (e.g., synthetic_simple, synthetic_advanced).
+    Each run can simulate different complexity scenarios for model benchmarking.
+'''
+
+
+
 import numpy as np
 import pandas as pd
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
+import os
 
-# ------------------------------
-# 1. Generate base data
-# ------------------------------
-# Multi-cluster structure with correlation between features
-X, y = make_classification(
-    n_samples=2500,
-    n_features=25,
-    n_informative=15,
+# Parameters
+n_samples = 1200
+n_features = 25
+n_outliers = 80
+random_state = 42
+
+# Step 1: Generate normal data
+X_normal, y_normal = make_classification(
+    n_samples=n_samples,
+    n_features=n_features,
+    n_informative=18,
     n_redundant=5,
-    n_repeated=0,
-    n_classes=2,
-    weights=[0.9, 0.1],  # imbalance
-    class_sep=1.5,
-    flip_y=0.02,
-    n_clusters_per_class=3,
-    random_state=42
+    flip_y=0.01,
+    weights=[0.98],  # 98% normal
+    random_state=random_state
 )
 
-df = pd.DataFrame(X, columns=[f"f{i}" for i in range(X.shape[1])])
-df['label'] = y
+# Step 2: Generate synthetic outliers
+X_outliers = np.random.uniform(low=-15, high=15, size=(n_outliers, n_features))
+y_outliers = np.ones(n_outliers)  # Label anomalies as 1
 
-# ------------------------------
-# 2. Inject realistic anomalies
-# ------------------------------
-# Add structured outliers: feature drift, extreme values, and correlated spikes
-n_outliers = 200
-outliers = np.random.normal(0, 6, size=(n_outliers, X.shape[1]))
-outlier_df = pd.DataFrame(outliers, columns=[f"f{i}" for i in range(X.shape[1])])
-outlier_df['label'] = 1  # anomalous class
+# Step 3: Combine normal + outlier data
+X_combined = np.vstack([X_normal, X_outliers])
+y_combined = np.hstack([y_normal, y_outliers])
 
-# Combine and shuffle
-df = pd.concat([df, outlier_df], axis=0).sample(frac=1, random_state=42).reset_index(drop=True)
+# Step 4: Feature engineering
+X_df = pd.DataFrame(X_combined)
+X_df['feature_sum'] = X_df.sum(axis=1)
+X_df['feature_mean'] = X_df.mean(axis=1)
+X_df['feature_std'] = X_df.std(axis=1)
+X_df['log_feature_0'] = np.log1p(np.abs(X_df[0]))
+X_df['sqrt_feature_1'] = np.sqrt(np.abs(X_df[1]))
 
-# ------------------------------
-# 3. Add nonlinear transformations
-# ------------------------------
-df['f_sum'] = df.iloc[:, :-1].sum(axis=1)
-df['f_mean'] = df.iloc[:, :-1].mean(axis=1)
-df['f_var'] = df.iloc[:, :-1].var(axis=1)
-df['f_log'] = np.log(np.abs(df['f0']) + 1)
-df['f_sqrt'] = np.sqrt(np.abs(df['f1']))
+# Step 5: Inject noise into 10% of rows
+np.random.seed(42)
+noise_rows = np.random.choice(X_df.index, size=int(0.1 * len(X_df)), replace=False)
+X_df.loc[noise_rows] += np.random.normal(loc=0, scale=1.0, size=X_df.loc[noise_rows].shape)
 
-# ------------------------------
-# 4. Introduce correlated noise (simulating sensor or cluster drift)
-# ------------------------------
-for i in range(5):
-    df[f"f{i}"] += np.random.normal(0, 0.8, size=len(df)) * (df['f_sum'] / df['f_sum'].std())
+# Step 6: Simulate feature dropout
+dropout_rows = np.random.choice(X_df.index, size=int(0.05 * len(X_df)), replace=False)
+X_df.loc[dropout_rows, 3] = 0  # Zero out column 3
 
-# ------------------------------
-# 5. Cluster-based anomaly refinement
-# ------------------------------
-scaler = StandardScaler()
-scaled_features = scaler.fit_transform(df.drop(columns=['label']))
+# Step 7: Apply scaling drift to first few columns
+X_df.iloc[:, :5] *= np.random.uniform(0.7, 1.3)
 
-kmeans = KMeans(n_clusters=5, random_state=42)
-clusters = kmeans.fit_predict(scaled_features)
-df['cluster'] = clusters
+# Step 8: Final assembly
+X_final = pd.concat([X_df, pd.Series(y_combined, name='label')], axis=1)
 
-# smallest cluster = anomaly
-cluster_counts = df['cluster'].value_counts()
-smallest_clusters = cluster_counts[cluster_counts < cluster_counts.mean()].index
-df['label'] = df['cluster'].apply(lambda x: 1 if x in smallest_clusters else 0)
+# Step 9: Save to CSV
+output_path = r"C:\Users\direc\Documents\GitHub\OptIForest\data\synthetic_complex.csv"
+X_final.to_csv(output_path, index=False, header=False)
 
-# ------------------------------
-# 6. Final clean-up and export
-# ------------------------------
-df.drop(columns=['cluster'], inplace=True)
-df = df.sample(frac=1, random_state=42).reset_index(drop=True)
-
-# Scale all features
-scaled = scaler.fit_transform(df.drop(columns=['label']))
-df_scaled = pd.DataFrame(scaled, columns=[c for c in df.columns if c != 'label'])
-df_scaled['label'] = df['label']
-
-# Save to CSV (no headers, as expected by OptIForest)
-output_path = "data/synthetic_optiforest_advanced.csv"
-df_scaled.to_csv(output_path, index=False, header=False)
-
-print(f"✅ Advanced synthetic dataset created and saved at: {output_path}")
-print(f"Rows: {df_scaled.shape[0]}, Columns: {df_scaled.shape[1]}")
-print(f"Anomaly ratio: {df_scaled['label'].mean():.3f}")
+print(f"✅ Complex synthetic dataset saved to:\n{output_path}")
+print(f"📊 Shape: {X_final.shape} (Rows: {X_final.shape[0]}, Features: {X_final.shape[1]-1}, Label column: 1)")
