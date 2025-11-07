@@ -28,20 +28,8 @@ print("Dataset:",filename)
 num_ensemblers = 100
 
 glass_df = pd.read_csv('data/' + filename + '.csv', header=None)  # pandas.DataFrame is returned by pandas.read_csv()
-# print("Number of columns:", glass_df.shape[1])  # Add this
-# print("First row:", glass_df.iloc[0].tolist())  # Add this
-# features = glass_df.iloc[:, 1:].values  # All columns except first (the features)
-# labels = (glass_df.iloc[:, 0] != 1).astype(int).values  # Convert class to binary
-
-# combined = np.column_stack([features, labels])
-
-# # Save as CSV with NO HEADERS
-# np.savetxt('data/wine.csv', combined, delimiter=',', fmt='%.10f')
-
 X = glass_df.values[:, :-1]  # numpy.ndarray is returned by pandas.DataFrame.values()
 ground_truth = glass_df.values[:, -1]
-# print("Unique labels:", np.unique(ground_truth))
-# print("Label counts:", np.bincount(ground_truth.astype(int)))
 
 detectors = [("L2OPT", OptIForest('L2OPT', num_ensemblers, threshold, branch))]  # OptIForest for L2SH base detector with expected branch factor e
 
